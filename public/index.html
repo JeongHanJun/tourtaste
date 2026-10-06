@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TourTaste</title>
+<meta name="description" content="A tour-planning agent that routes, pairs and sponsors live acts from Qloo taste data.">
+<style>
+:root{--page:#f9f9f7;--surface:#fcfcfb;--ink:#0b0b0b;--ink2:#52514e;--muted:#8b8a85;--line:#e4e3de;--accent:#2a78d6;--bar:#2a78d6;--warn:#8a5a00;--warnbg:#fdf3d7}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--page:#0d0d0d;--surface:#1a1a19;--ink:#fff;--ink2:#c3c2b7;--muted:#8b8a85;--line:#33332f;--accent:#3987e5;--bar:#3987e5;--warn:#f0c768;--warnbg:#3a2f12}}
+:root[data-theme="dark"]{--page:#0d0d0d;--surface:#1a1a19;--ink:#fff;--ink2:#c3c2b7;--muted:#8b8a85;--line:#33332f;--accent:#3987e5;--bar:#3987e5;--warn:#f0c768;--warnbg:#3a2f12}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:980px;margin:0 auto;padding:28px 16px 64px}
+h1{font-size:28px;margin:0;letter-spacing:-.01em}
+.lede{color:var(--ink2);margin:6px 0 22px;max-width:62ch}
+form{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:12px}
+label{font-size:13px;font-weight:600;color:var(--ink2);display:block;margin-bottom:4px}
+input,textarea{width:100%;font:inherit;color:var(--ink);background:var(--page);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+textarea{min-height:76px;resize:vertical}
+input:focus,textarea:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+button{font:inherit;font-weight:600;border:0;border-radius:8px;padding:10px 18px;background:var(--accent);color:#fff;cursor:pointer}
+button[disabled]{opacity:.6;cursor:progress}
+.chip{background:none;color:var(--ink2);border:1px solid var(--line);font-weight:500;font-size:13px;padding:6px 10px}
+.note{font-size:13px;color:var(--muted)}
+.banner{background:var(--warnbg);color:var(--warn);border-radius:8px;padding:10px 12px;font-size:14px;margin:16px 0 0}
+.error{color:#d03b3b;font-size:14px}
+section{margin-top:28px}
+h2{font-size:17px;margin:0 0 4px}
+.sub{color:var(--ink2);font-size:14px;margin:0 0 10px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.summary{font-size:17px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+ol.rank{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+ol.rank li{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:baseline}
+.name{font-weight:600}
+.score{font-variant-numeric:tabular-nums;color:var(--ink2);font-size:14px}
+.track{grid-column:1/-1;height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.fill{height:100%;background:var(--bar);border-radius:3px}
+.why{grid-column:1/-1;color:var(--ink2);font-size:14px}
+.meta{color:var(--muted);font-size:13px;font-weight:400}
+ul.plain{margin:0;padding-left:18px;color:var(--ink2)}
+details{margin-top:8px}
+summary{cursor:pointer;font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--ink2)}
+code{font-size:12px;word-break:break-all}
+.scroll{overflow-x:auto}
+footer{margin-top:40px;color:var(--muted);font-size:13px}
+a{color:var(--accent)}
+</style>
+</head>
+<body>
+<main>
+  <h1>TourTaste</h1>
+  <p class="lede">Tell the agent which act is going on the road. It asks Qloo where that act's audience taste is strongest, which acts and brands the same audience likes, and writes a routing recommendation you can check against the evidence.</p>
+
+  <form id="form">
+    <div>
+      <label for="act">Act (artist, band or comedian)</label>
+      <input id="act" name="act" maxlength="80" required placeholder="e.g. Khruangbin" autocomplete="off">
+    </div>
+    <div>
+      <label for="brief">Brief (optional)</label>
+      <textarea id="brief" name="brief" maxlength="600" placeholder="e.g. Six club dates in Germany and the UK next spring. We want local openers and a drinks sponsor."></textarea>
+    </div>
+    <p class="note">Describe the tour only. Please do not enter personal information about yourself or anyone else.</p>
+    <div class="row">
+      <button id="go" type="submit">Plan the tour</button>
+      <button class="chip" type="button" data-act="Khruangbin" data-brief="Six club dates in Germany and the UK. Local openers and a drinks sponsor.">Example: club tour</button>
+      <button class="chip" type="button" data-act="Hannah Gadsby" data-brief="Comedian. Theatre run in the US and Canada, no sponsors.">Example: comedy run</button>
+      <span class="note" id="status" role="status"></span>
+    </div>
+    <div class="error" id="error" role="alert"></div>
+  </form>
+
+  <div id="out"></div>
+
+  <footer>
+    Taste data from the <a href="https://www.qloo.com/" rel="noopener">Qloo</a> API. Affinity describes aggregate audience taste; it is not a forecast of ticket sales.
+    Built for the Qloo Agentic Hackathon. <a href="https://github.com/JeongHanJun/tourtaste" id="repo" rel="noopener">Source</a>
+  </footer>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const pct = (a) => (a == null ? "" : a.toFixed(2));
+
+function ranked(list, picks) {
+  if (!list.length) return '<p class="sub">Qloo returned nothing here.</p>';
+  const why = new Map((picks || []).map((p) => [p.name, p.why]));
+  const max = Math.max(...list.map((e) => e.affinity ?? 0), 0.0001);
+  return '<ol class="rank">' + list.map((e) => `<li>
+    <span class="name">${esc(e.name)} <span class="meta">${esc([e.city, e.country].filter(Boolean).join(", "))}</span></span>
+    <span class="score" title="Qloo affinity">${pct(e.affinity)}</span>
+    <span class="track" aria-hidden="true"><span class="fill" style="width:${Math.round(((e.affinity ?? 0) / max) * 100)}%;display:block"></span></span>
+    ${why.has(e.name) ? `<span class="why">${esc(why.get(e.name))}</span>` : ""}
+  </li>`).join("") + "</ol>";
+}
+
+function render(r) {
+  if (!r.act) {
+    $("out").innerHTML = `<section class="card"><p>${esc((r.decisions || []).slice(-1)[0] || "No match.")}</p></section>`;
+    return;
+  }
+  const b = r.brief;
+  const calls = (r.calls || []).map((c) => `<tr><td>${esc(c.purpose)}</td><td><code>${esc(c.path)}?${esc(new URLSearchParams(c.params).toString())}</code></td><td>${c.error ? esc(c.error) : c.count}</td><td>${c.ms} ms</td></tr>`).join("");
+  $("out").innerHTML = `
+    ${r.sample ? '<div class="banner">Sample data. No Qloo API key is configured, so these names and scores are placeholders, not real results.</div>' : ""}
+    <section class="card">
+      <h2>${esc(r.act.name)} <span class="meta">${esc(r.act.description || "")}</span></h2>
+      <p class="summary">${esc(b.summary)}</p>
+      ${b.cautions.length ? '<ul class="plain">' + b.cautions.map((c) => `<li>${esc(c)}</li>`).join("") + "</ul>" : ""}
+      <p class="note">${b.writtenBy === "llm" ? "Written by the language model from the Qloo results below; it may only cite entities Qloo returned." : "Written from a template (language model not used for this run)."}${r.cached ? " Served from cache." : ""}</p>
+    </section>
+    <section class="grid">
+      <div class="card"><h2>Where to play</h2><p class="sub">Cities ranked by audience affinity</p>${ranked(r.cities, b.cities)}</div>
+      <div class="card"><h2>Who opens</h2><p class="sub">Acts the same audience likes</p>${ranked(r.support, b.support)}</div>
+      <div class="card"><h2>Who sponsors</h2><p class="sub">Brands that over-index with this audience</p>${ranked(r.sponsors, b.sponsors)}</div>
+    </section>
+    ${r.hangouts.length ? `<section><h2>Where the audience already goes</h2><p class="sub">Places for pre-show promotion and partner activations</p><div class="grid">${r.hangouts.map((h) => `<div class="card"><h2>${esc(h.city)}</h2>${ranked(h.places)}</div>`).join("")}</div></section>` : ""}
+    <section class="card">
+      <h2>How the agent got here</h2>
+      ${r.decisions.length ? '<ul class="plain">' + r.decisions.map((d) => `<li>${esc(d)}</li>`).join("") + "</ul>" : ""}
+      <details><summary>${(r.calls || []).length} Qloo calls</summary><div class="scroll"><table><tr><th>Why</th><th>Request</th><th>Results</th><th>Time</th></tr>${calls}</table></div></details>
+      <p class="note">Language model calls: ${r.llm.calls} (${r.llm.inputTokens} tokens in, ${r.llm.outputTokens} out)${r.llm.skipped ? `, ${r.llm.skipped} skipped` : ""}.</p>
+    </section>`;
+}
+
+async function plan(act, brief) {
+  $("error").textContent = ""; $("go").disabled = true; $("status").textContent = "Asking Qloo…";
+  try {
+    const res = await fetch("/api/plan", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ act, brief }) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Something went wrong.");
+    render(data);
+  } catch (err) {
+    $("error").textContent = err.message;
+  } finally {
+    $("go").disabled = false; $("status").textContent = "";
+  }
+}
+
+$("form").addEventListener("submit", (e) => { e.preventDefault(); plan($("act").value.trim(), $("brief").value.trim()); });
+const shared = new URLSearchParams(location.search);
+if (shared.get("act")) { $("act").value = shared.get("act"); $("brief").value = shared.get("brief") || ""; plan($("act").value.trim(), $("brief").value.trim()); }
+document.querySelectorAll(".chip").forEach((b) => b.addEventListener("click", () => { $("act").value = b.dataset.act; $("brief").value = b.dataset.brief; plan(b.dataset.act, b.dataset.brief); }));
+</script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tourtaste",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-27",
+  "observability": { "enabled": true },
+  "assets": { "directory": "public", "binding": "ASSETS" },
+  "ai": { "binding": "AI" },
+  // Create once with `npx wrangler kv namespace create TOURTASTE_KV` and paste the id here.
+  "kv_namespaces": [{ "binding": "KV", "id": "fd2858b5842244f89824003f76239848" }],
+  "vars": {
+    "QLOO_BASE_URL": "https://hackathon.api.qloo.com",
+    // "mock" serves clearly-labelled sample data so the UI can be developed without a key.
+    "QLOO_MODE": "live",
+    "LLM_MODEL": "@cf/qwen/qwen3-30b-a3b-fp8",
+    // Neurons per million tokens for LLM_MODEL (Workers AI pricing page). Used only for the spend guard.
+    "LLM_NEURONS_PER_M_INPUT": "4625",
+    "LLM_NEURONS_PER_M_OUTPUT": "30475",
+    // Hard daily caps. Workers AI gives 10,000 free neurons per day per account; stay well below it.
+    "DAILY_NEURON_BUDGET": "3000",
+    "DAILY_RUN_LIMIT": "100",
+    "DAILY_RUN_LIMIT_PER_IP": "15"
+  }
+  // Secret (wrangler secret put QLOO_API_KEY): the hackathon API key. Never commit it.
+}
